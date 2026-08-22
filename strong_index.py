@@ -1,4 +1,4 @@
-"""네이버증권 코스피200 종목 중 코스피 대비 상대강도(RS)가 강한 종목을 저장한다.
+"""네이버증권 코스피 전체 종목 중 코스피 대비 상대강도(RS)가 강한 종목을 저장한다.
 
 RS 지수 = (종목의 기간 누적수익률 / 코스피의 기간 누적수익률) x 100
 100보다 크면 같은 기간 코스피보다 강했던 종목으로 본다.
@@ -32,7 +32,6 @@ HISTORY_FILE = OUTPUT_DIR / "stong_index.csv"  # 요구사항의 파일명(stong
 INDEX_HISTORY_FILE = OUTPUT_DIR / "index_snapshots.csv"
 NAVER_FINANCE = "https://finance.naver.com"
 PRICE_API = "https://api.finance.naver.com/siseJson.naver"
-KOSPI200_CODE = "KPI200"
 KOSPI_SYMBOL = "KOSPI"
 KOSDAQ_SYMBOL = "KOSDAQ"
 ETF_TOP_RANK_LIMIT = 5
@@ -166,14 +165,14 @@ def request(session: requests.Session, url: str, **kwargs: object) -> requests.R
         raise StrongIndexError(f"네이버증권에 연결하지 못했습니다: {error}") from error
 
 
-def fetch_kospi200(session: requests.Session, pause: float) -> list[Stock]:
-    """네이버증권의 코스피200 편입 종목 페이지를 끝까지 읽는다."""
+def fetch_kospi_stocks(session: requests.Session, pause: float) -> list[Stock]:
+    """네이버증권의 코스피 시가총액 페이지에서 전체 상장 종목을 읽는다."""
     stocks: dict[str, Stock] = {}
-    for page in range(1, 31):  # 네이버증권은 보통 페이지당 10개 종목을 보여 준다.
+    for page in range(1, 101):  # 페이지당 최대 50개, 현재 코스피 상장 종목 수보다 충분히 크다.
         response = request(
             session,
-            f"{NAVER_FINANCE}/sise/entryJongmok.naver",
-            params={"code": KOSPI200_CODE, "page": page},
+            f"{NAVER_FINANCE}/sise/sise_market_sum.naver",
+            params={"sosok": "0", "page": page},
         )
         soup = BeautifulSoup(response.text, "html.parser")
         page_stocks: list[Stock] = []
@@ -192,7 +191,7 @@ def fetch_kospi200(session: requests.Session, pause: float) -> list[Stock]:
 
     if not stocks:
         raise StrongIndexError(
-            "코스피200 편입 종목을 읽지 못했습니다. 네이버증권의 페이지 구조가 바뀌었거나 접근이 제한되었을 수 있습니다."
+            "코스피 전체 종목을 읽지 못했습니다. 네이버증권의 페이지 구조가 바뀌었거나 접근이 제한되었을 수 있습니다."
         )
     return list(stocks.values())
 
@@ -912,7 +911,7 @@ def print_results(results: list[Result]) -> None:
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="코스피200 종목의 코스피 대비 RS 강도를 계산합니다.")
+    parser = argparse.ArgumentParser(description="코스피 전체 종목의 코스피 대비 RS 강도를 계산합니다.")
     parser.add_argument("--lookback-days", type=int, default=120, help="RS 계산에 사용할 거래일 수 (기본: 120)")
     parser.add_argument("--min-rs", type=float, default=80.0, help="추출 기준 RS 지수, 초과 종목만 저장 (기본: 80)")
     parser.add_argument("--min-market-cap", type=int, default=5000, help="최소 시가총액(억원, 기본: 5000)")
@@ -968,8 +967,8 @@ def main() -> int:
     start = end - timedelta(days=max(args.lookback_days, 120) * 2 + 30)
     try:
         with requests.Session() as session:
-            print("네이버증권에서 코스피200 편입 종목을 읽는 중입니다...")
-            stocks = fetch_kospi200(session, args.pause)
+            print("네이버증권에서 코스피 전체 종목을 읽는 중입니다...")
+            stocks = fetch_kospi_stocks(session, args.pause)
             benchmark = fetch_prices(session, KOSPI_SYMBOL, start, end)
             kosdaq = fetch_prices(session, KOSDAQ_SYMBOL, start, end)
             if len(benchmark) < max(args.lookback_days, 120):

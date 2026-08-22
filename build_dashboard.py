@@ -72,6 +72,16 @@ function render(date){selectedDate=date;const data=(byDate[date]||[]).slice();da
 function renderCalendar(){const y=shownMonth.getFullYear(),m=shownMonth.getMonth(),first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate(),cells=[];document.getElementById('monthTitle').textContent=y+'년 '+(m+1)+'월';for(let i=0;i<first;i++)cells.push('<div class="day blank"></div>');for(let day=1;day<=last;day++){const date=iso(y,m,day),data=byDate[date]||[],priority=data.filter(r=>r.volatilityContraction==='O');let inside='<span class="date">'+day+'</span>';if(data.length){inside+='<span class="countchip">'+data.length+'종목</span>';if(priority.length){inside+='<span class="prioritytitle">우선확인종목</span>'+priority.map(r=>{const streak=streakDays(date,r.name);return '<span class="stockchip">'+esc(r.name)+(streak>=2?'<span class="streak">연속'+streak+'일</span>':'')+'</span>';}).join('');}}const week=(first+day-1)%7;cells.push('<button class="day '+(data.length?'hasdata ':'')+(date===selectedDate?'selected ':'')+(week===0?'sunday':week===6?'saturday':'')+'" '+(data.length?'data-date="'+date+'"':'disabled')+'>'+inside+'</button>');}while(cells.length%7)cells.push('<div class="day blank"></div>');document.getElementById('calendarDays').innerHTML=cells.join('');}
 dates.forEach(d=>select.add(new Option(d,d)));select.addEventListener('change',e=>render(e.target.value));document.getElementById('calendarDays').addEventListener('click',e=>{const button=e.target.closest('[data-date]');if(button){select.value=button.dataset.date;render(button.dataset.date);}});document.querySelectorAll('[data-sort]').forEach(button=>button.addEventListener('click',()=>{const key=button.dataset.sort;sortDirection=key===sortKey?-sortDirection:-1;sortKey=key;render(selectedDate);}));document.getElementById('prevMonth').addEventListener('click',()=>{shownMonth=new Date(shownMonth.getFullYear(),shownMonth.getMonth()-1,1);renderCalendar();});document.getElementById('nextMonth').addEventListener('click',()=>{shownMonth=new Date(shownMonth.getFullYear(),shownMonth.getMonth()+1,1);renderCalendar();});if(dates.length){select.value=dates[0];render(dates[0]);}else{renderCalendar();}
 </script></body></html>'''
+    page = page.replace(
+        ".indexvalue{font-size:15px}.indexgap{margin-left:6px;font-size:12px;font-weight:800}",
+        ".indexvalue{display:block;font-size:15px}.indexgaplabel{font-size:11px;color:#697585;font-weight:700}.indexgap{margin-left:4px;font-size:12px;font-weight:800}",
+    ).replace(
+        '<strong class="indexvalue" id="kospiClose">-</strong><span class="indexgap" id="kospiGap">-</span>',
+        '<strong class="indexvalue" id="kospiClose">-</strong><span class="indexgaplabel">20이평선 대비</span><span class="indexgap" id="kospiGap">-</span>',
+    ).replace(
+        '<strong class="indexvalue" id="kosdaqClose">-</strong><span class="indexgap" id="kosdaqGap">-</span>',
+        '<strong class="indexvalue" id="kosdaqClose">-</strong><span class="indexgaplabel">20이평선 대비</span><span class="indexgap" id="kosdaqGap">-</span>',
+    ).replace("코스피200 편입 종목", "코스피 전체 종목")
     return page.replace("__ROWS__", json.dumps(rows, ensure_ascii=True)).replace(
         "__INDICES__", json.dumps(indices, ensure_ascii=True)
     )
