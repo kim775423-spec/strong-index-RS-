@@ -34,8 +34,8 @@ NAVER_FINANCE = "https://finance.naver.com"
 PRICE_API = "https://api.finance.naver.com/siseJson.naver"
 KOSPI_SYMBOL = "KOSPI"
 KOSDAQ_SYMBOL = "KOSDAQ"
-ETF_TOP_RANK_LIMIT = 5
 ETF_DISPLAY_LIMIT = 3
+ETF_HOLDINGS_CACHE_VERSION = 2
 ETF_MASTER_CACHE_FILE = OUTPUT_DIR / "etf_top_holdings_master.json"
 THEME_MASTER_CACHE_FILE = OUTPUT_DIR / "naver_theme_memberships_master.json"
 THEME_DISPLAY_LIMIT = 3
@@ -572,7 +572,7 @@ def find_etf_candidates(
     run_date: str,
     pause: float,
 ) -> dict[str, list[dict[str, object]]]:
-    """종목이 ETF 공개 구성종목 상위 5위에 들어간 ETF를 찾고 하루 동안 캐시한다."""
+    """종목이 편입된 ETF를 찾아 ETF 규모 순으로 고를 수 있게 하루 동안 캐시한다."""
     OUTPUT_DIR.mkdir(exist_ok=True)
     cache_path = etf_holdings_cache_path(run_date)
     target_codes = {stock.code for stock in stocks}
@@ -583,7 +583,7 @@ def find_etf_candidates(
             cached = json.loads(cache_path.read_text(encoding="utf-8"))
             if (
                 cached.get("run_date") == run_date
-                and cached.get("top_rank_limit") == ETF_TOP_RANK_LIMIT
+                and cached.get("holdings_cache_version") == ETF_HOLDINGS_CACHE_VERSION
                 and set(cached.get("target_codes", [])) == target_codes
             ):
                 cached_matches = cached.get("matches", {})
@@ -607,7 +607,7 @@ def find_etf_candidates(
     if ETF_MASTER_CACHE_FILE.exists():
         try:
             master = json.loads(ETF_MASTER_CACHE_FILE.read_text(encoding="utf-8"))
-            if master.get("top_rank_limit") == ETF_TOP_RANK_LIMIT:
+            if master.get("holdings_cache_version") == ETF_HOLDINGS_CACHE_VERSION:
                 for etf_code, holdings in master.get("holdings", {}).items():
                     etf = etfs_by_code.get(etf_code)
                     if not etf:
@@ -628,7 +628,7 @@ def find_etf_candidates(
                     json.dumps(
                         {
                             "run_date": run_date,
-                            "top_rank_limit": ETF_TOP_RANK_LIMIT,
+                            "holdings_cache_version": ETF_HOLDINGS_CACHE_VERSION,
                             "target_codes": sorted(target_codes),
                             "matches": matches,
                         },
@@ -648,9 +648,8 @@ def find_etf_candidates(
         except StrongIndexError:
             time.sleep(pause)
             continue
-        master_holdings[etf.code] = holdings[:ETF_TOP_RANK_LIMIT]
-        # 네이버 화면에 공개된 구성비중 상위 10개 중 5위까지만 인정한다.
-        for holding in holdings[:ETF_TOP_RANK_LIMIT]:
+        master_holdings[etf.code] = holdings
+        for holding in holdings:
             stock_code = str(holding["stock_code"])
             if stock_code in matches:
                 matches[stock_code].append(
@@ -666,7 +665,7 @@ def find_etf_candidates(
     print(" " * 100, end="\r")
     ETF_MASTER_CACHE_FILE.write_text(
         json.dumps(
-            {"top_rank_limit": ETF_TOP_RANK_LIMIT, "holdings": master_holdings},
+            {"holdings_cache_version": ETF_HOLDINGS_CACHE_VERSION, "holdings": master_holdings},
             ensure_ascii=False,
         ),
         encoding="utf-8",
@@ -675,7 +674,7 @@ def find_etf_candidates(
         json.dumps(
             {
                 "run_date": run_date,
-                "top_rank_limit": ETF_TOP_RANK_LIMIT,
+                "holdings_cache_version": ETF_HOLDINGS_CACHE_VERSION,
                 "target_codes": sorted(target_codes),
                 "matches": matches,
             },
@@ -693,13 +692,13 @@ def etf_trend_labels(
     end: date,
     pause: float,
 ) -> dict[str, tuple[str, str, str]]:
-    """후보 ETF 중 20일선 괴리율 ±10% 이내 ETF의 통과여부·이름·상세를 만든다."""
+    """규모 상위 ETF 3개의 20일선 통과 수·편입 상태·상세를 만든다."""
     unique_etfs = {
         str(item["etf_code"]): (str(item["etf_name"]), str(item["etf_code"]))
         for items in candidates.values()
         for item in items
     }
-    trend_gaps: dict[str, float] = {}
+    trend_gaps: dict[str, float | None] = {}
     for number, (code, _) in enumerate(unique_etfs.items(), start=1):
         print(f"ETF 추세 확인 중: {number}/{len(unique_etfs)}", end="\r", flush=True)
         try:
@@ -708,8 +707,7 @@ def etf_trend_labels(
             if len(days) >= 20:
                 ma20 = sum(prices[day] for day in days[-20:]) / 20
                 gap = (prices[days[-1]] / ma20 - 1) * 100
-                if abs(gap) <= 10:
-                    trend_gaps[code] = gap
+                trend_gaps[code] = gap
         except StrongIndexError:
             pass
         time.sleep(pause)
@@ -717,17 +715,29 @@ def etf_trend_labels(
 
     labels: dict[str, tuple[str, str, str]] = {}
     for stock_code, items in candidates.items():
-        good_items = sorted(
-            (item for item in items if str(item["etf_code"]) in trend_gaps),
+        selected_items = sorted(
+            items,
             key=lambda item: int(item.get("market_cap", 0) or 0),
             reverse=True,
         )[:ETF_DISPLAY_LIMIT]
+        pass_count = sum(
+            abs(gap) <= 10
+            for item in selected_items
+            if (gap := trend_gaps.get(str(item["etf_code"]))) is not None
+        )
         details = [
-            f"{item['etf_name']} (비중 {float(item['weight']):.2f}%, 20일선 {trend_gaps[str(item['etf_code'])]:+.2f}%)"
-            for item in good_items
+            f"{item['etf_name']} ({'편입상위' if int(item['rank']) <= 10 else '편입'}, "
+            f"비중 {float(item['weight']):.2f}%, "
+            f"20일선 {trend_gaps[str(item['etf_code'])]:+.2f}%)"
+            if trend_gaps.get(str(item["etf_code"])) is not None
+            else f"{item['etf_name']} ({'편입상위' if int(item['rank']) <= 10 else '편입'}, 비중 {float(item['weight']):.2f}%, 20일선 미확인)"
+            for item in selected_items
         ]
-        names = [str(item["etf_name"]) for item in good_items]
-        labels[stock_code] = ("통과" if details else "미통과", " / ".join(names), " / ".join(details))
+        names = [
+            f"{item['etf_name']} · {'편입상위' if int(item['rank']) <= 10 else '편입'}"
+            for item in selected_items
+        ]
+        labels[stock_code] = (f"{pass_count}개통과", "\n".join(names), "\n".join(details))
     return labels
 
 

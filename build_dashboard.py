@@ -81,6 +81,18 @@ dates.forEach(d=>select.add(new Option(d,d)));select.addEventListener('change',e
     ).replace(
         '<strong class="indexvalue" id="kosdaqClose">-</strong><span class="indexgap" id="kosdaqGap">-</span>',
         '<strong class="indexvalue" id="kosdaqClose">-</strong><span class="indexgaplabel">20이평선 대비</span><span class="indexgap" id="kosdaqGap">-</span>',
+    ).replace(
+        ".theme,.etf{margin-top:4px;color:#596574;font-size:13px;line-height:1.5}",
+        ".theme,.etf{margin-top:4px;color:#596574;font-size:13px;line-height:1.65}",
+    ).replace(
+        "<li>공개 편입 비중 순위 5위 이내</li><li>ETF 20일선 괴리율 ±10% 이내</li><li>시가총액 상위 ETF 3개까지 표시</li>",
+        "<li>종목 편입 ETF 중 시가총액 상위 3개</li><li>편입비중 10위 이내는 편입상위로 표기</li><li>각 ETF의 20일선 괴리율 ±10% 이내 여부 집계</li>",
+    ).replace(
+        "function esc(value){",
+        "function etfLines(value){const lines=String(value||'').split('\\n').filter(Boolean);return lines.length?lines.map(line=>'<div>'+esc(line)+'</div>').join(''):'-';}function esc(value){",
+    ).replace(
+        "<td><span class=\"pill '+(r.etfGood===PASS?'pass':'fail')+'\">'+esc(r.etfGood||'-')+'</span><div class=\"etf\">'+esc(r.etfNames||'-')+'</div></td>",
+        "<td><span class=\"pill '+(r.etfGood==='0개통과'?'fail':'pass')+'\">'+esc(r.etfGood||'-')+'</span><div class=\"etf\">'+etfLines(r.etfNames)+'</div></td>",
     ).replace("코스피200 편입 종목", "코스피 전체 종목")
     return page.replace("__ROWS__", json.dumps(rows, ensure_ascii=True)).replace(
         "__INDICES__", json.dumps(indices, ensure_ascii=True)
