@@ -83,16 +83,25 @@ dates.forEach(d=>select.add(new Option(d,d)));select.addEventListener('change',e
         '<strong class="indexvalue" id="kosdaqClose">-</strong><span class="indexgaplabel">20이평선 대비</span><span class="indexgap" id="kosdaqGap">-</span>',
     ).replace(
         ".theme,.etf{margin-top:4px;color:#596574;font-size:13px;line-height:1.5}",
-        ".theme,.etf{margin-top:4px;color:#596574;font-size:13px;line-height:1.65}",
+        ".theme,.etf{margin-top:4px;color:#596574;font-size:13px;line-height:1.65}.help-target{border-bottom:1px dashed #9ba7b4;cursor:help}.header-tip{position:fixed;z-index:10;max-width:280px;padding:10px 12px;border:1px solid #cfd9e3;border-radius:8px;background:#fff;box-shadow:0 6px 18px rgba(24,32,42,.14);color:#3f4b59;font-size:12px;font-weight:500;line-height:1.5;pointer-events:none}",
     ).replace(
         "<li>공개 편입 비중 순위 5위 이내</li><li>ETF 20일선 괴리율 ±10% 이내</li><li>시가총액 상위 ETF 3개까지 표시</li>",
         "<li>종목 편입 ETF 중 시가총액 상위 3개</li><li>편입비중 10위 이내는 편입상위로 표기</li><li>각 ETF의 20일선 괴리율 ±10% 이내 여부 집계</li>",
     ).replace(
         "function esc(value){",
-        "function etfLines(value){const lines=String(value||'').split('\\n').filter(Boolean);return lines.length?lines.map(line=>'<div>'+esc(line)+'</div>').join(''):'-';}function esc(value){",
+        "function initHeaderTips(){const tip=document.getElementById('headerTip');let timer;const hide=()=>{clearTimeout(timer);tip.hidden=true;};document.querySelectorAll('[data-help]').forEach(target=>{target.addEventListener('mouseenter',()=>{timer=setTimeout(()=>{tip.textContent=target.dataset.help;const rect=target.getBoundingClientRect();tip.style.left=Math.min(rect.left,window.innerWidth-300)+'px';tip.style.top=(rect.bottom+8)+'px';tip.hidden=false;},1000);});target.addEventListener('mouseleave',hide);});}function etfLines(value){const lines=String(value||'').split('\\n').filter(Boolean);return lines.length?lines.map(line=>'<div>'+esc(line)+'</div>').join(''):'-';}function esc(value){",
     ).replace(
         "<td><span class=\"pill '+(r.etfGood===PASS?'pass':'fail')+'\">'+esc(r.etfGood||'-')+'</span><div class=\"etf\">'+esc(r.etfNames||'-')+'</div></td>",
         "<td><span class=\"pill '+(r.etfGood==='0개통과'?'fail':'pass')+'\">'+esc(r.etfGood||'-')+'</span><div class=\"etf\">'+etfLines(r.etfNames)+'</div></td>",
+    ).replace(
+        "</main><script>",
+        '<div class="header-tip" id="headerTip" role="tooltip" hidden></div></main><script>',
+    ).replace(
+        '<th>순위</th><th><button data-sort="name">종목 ↕</button></th><th><button data-sort="marketCap">시가총액 ↕</button></th><th><button data-sort="rs">RS 지수 ↕</button></th><th><button data-sort="ma20Gap">20일선 괴리 ↕</button></th><th><button data-sort="volatilityContraction">변동성 수축 ↕</button></th><th><button data-sort="industry">산업군 ↕</button></th><th><button data-sort="theme">테마 ↕</button></th><th><button data-sort="etfGood">ETF 추세양호 · ETF명 ↕</button></th>',
+        '<th><span class="help-target" data-help="현재 선택된 정렬 기준의 순위입니다. 기본 정렬은 RS 지수 내림차순입니다.">순위</span></th><th><button data-sort="name"><span class="help-target" data-help="종목명과 종목 코드입니다.">종목</span> ↕</button></th><th><button data-sort="marketCap"><span class="help-target" data-help="종가 기준 시가총액입니다. 표에서는 조 단위로 표시합니다.">시가총액</span> ↕</button></th><th><button data-sort="rs"><span class="help-target" data-help="같은 기간 코스피 대비 종목의 상대강도 지수입니다. 100보다 크면 코스피보다 강했다는 뜻입니다.">RS 지수</span> ↕</button></th><th><button data-sort="ma20Gap"><span class="help-target" data-help="종가가 20일 이동평균선에서 얼마나 떨어져 있는지 나타낸 비율입니다.">20일선 괴리</span> ↕</button></th><th><button data-sort="volatilityContraction"><span class="help-target" data-help="변동성 수축 기준 충족 여부입니다. 충족하면 O, 아니면 X로 표시합니다.">변동성 수축</span> ↕</button></th><th><button data-sort="industry"><span class="help-target" data-help="종목의 산업군 분류입니다.">산업군</span> ↕</button></th><th><button data-sort="theme"><span class="help-target" data-help="종목과 연관된 주요 테마입니다.">테마</span> ↕</button></th><th><button data-sort="etfGood"><span class="help-target" data-help="규모 상위 3개 편입 ETF 중 20일선 괴리율이 ±10% 이내인 ETF의 개수입니다.">ETF 추세양호</span> · <span class="help-target" data-help="해당 종목이 편입된 규모 상위 3개 ETF입니다. 편입비중 10위 이내면 편입상위로 표시합니다.">ETF명</span> ↕</button></th>',
+    ).replace(
+        "if(dates.length){select.value=dates[0];render(dates[0]);}",
+        "initHeaderTips();if(dates.length){select.value=dates[0];render(dates[0]);}",
     ).replace("코스피200 편입 종목", "코스피 전체 종목")
     return page.replace("__ROWS__", json.dumps(rows, ensure_ascii=True)).replace(
         "__INDICES__", json.dumps(indices, ensure_ascii=True)
