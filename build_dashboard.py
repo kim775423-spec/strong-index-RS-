@@ -83,16 +83,19 @@ dates.forEach(d=>select.add(new Option(d,d)));select.addEventListener('change',e
         '<strong class="indexvalue" id="kosdaqClose">-</strong><span class="indexgaplabel">20이평선 대비</span><span class="indexgap" id="kosdaqGap">-</span>',
     ).replace(
         ".theme,.etf{margin-top:4px;color:#596574;font-size:13px;line-height:1.5}",
-        ".theme,.etf{margin-top:4px;color:#596574;font-size:13px;line-height:1.65}.help-target{border-bottom:1px dashed #9ba7b4;cursor:help}.header-tip{position:fixed;z-index:10;max-width:280px;padding:10px 12px;border:1px solid #cfd9e3;border-radius:8px;background:#fff;box-shadow:0 6px 18px rgba(24,32,42,.14);color:#3f4b59;font-size:12px;font-weight:500;line-height:1.5;pointer-events:none}",
+        ".theme,.etf{margin-top:4px;color:#596574;font-size:13px;line-height:1.65}.tag-list{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.data-tag{display:block;max-width:100%;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:800;line-height:1.35}.theme-tag{background:#f2efff;color:#6254a3}.etf-tag{background:#e9f9ef;color:#087d40}.help-target{border-bottom:1px dashed #9ba7b4;cursor:help}.header-tip{position:fixed;z-index:10;max-width:280px;padding:10px 12px;border:1px solid #cfd9e3;border-radius:8px;background:#fff;box-shadow:0 6px 18px rgba(24,32,42,.14);color:#3f4b59;font-size:12px;font-weight:500;line-height:1.5;pointer-events:none}",
     ).replace(
         "<li>공개 편입 비중 순위 5위 이내</li><li>ETF 20일선 괴리율 ±10% 이내</li><li>시가총액 상위 ETF 3개까지 표시</li>",
         "<li>종목 편입 ETF 중 시가총액 상위 3개</li><li>편입비중 10위 이내는 편입상위로 표기</li><li>각 ETF의 20일선 괴리율 ±10% 이내 여부 집계</li>",
     ).replace(
         "function esc(value){",
-        "function initHeaderTips(){const tip=document.getElementById('headerTip');let timer;const hide=()=>{clearTimeout(timer);tip.hidden=true;};document.querySelectorAll('[data-help]').forEach(target=>{target.addEventListener('mouseenter',()=>{timer=setTimeout(()=>{tip.textContent=target.dataset.help;const rect=target.getBoundingClientRect();tip.style.left=Math.min(rect.left,window.innerWidth-300)+'px';tip.style.top=(rect.bottom+8)+'px';tip.hidden=false;},1000);});target.addEventListener('mouseleave',hide);});}function etfLines(value){const lines=String(value||'').split('\\n').filter(Boolean);return lines.length?lines.map(line=>'<div>'+esc(line)+'</div>').join(''):'-';}function esc(value){",
+        "function initHeaderTips(){const tip=document.getElementById('headerTip');let timer;const hide=()=>{clearTimeout(timer);tip.hidden=true;};document.querySelectorAll('[data-help]').forEach(target=>{target.addEventListener('mouseenter',()=>{timer=setTimeout(()=>{tip.textContent=target.dataset.help;const rect=target.getBoundingClientRect();tip.style.left=Math.min(rect.left,window.innerWidth-300)+'px';tip.style.top=(rect.bottom+8)+'px';tip.hidden=false;},1000);});target.addEventListener('mouseleave',hide);});}function labelItems(value){return String(value||'').split(/\\n|\\s*\\/\\s*/).map(item=>item.trim()).filter(Boolean);}function tagLines(value,kind){const items=labelItems(value);return items.length?'<div class=\"tag-list\">'+items.map(item=>'<span class=\"data-tag '+kind+'\">'+esc(item)+'</span>').join('')+'</div>':'-';}function themePills(value){return tagLines(value,'theme-tag');}function etfPills(value){return tagLines(value,'etf-tag');}function etfPassLabel(row){if(/^\\d+개통과$/.test(String(row.etfGood||'')))return row.etfGood;if(row.etfGood===PASS){const count=Math.min(labelItems(row.etfNames).length,3);return count?count+'개통과':'0개통과';}return row.etfGood||'-';}function esc(value){",
     ).replace(
         "<td><span class=\"pill '+(r.etfGood===PASS?'pass':'fail')+'\">'+esc(r.etfGood||'-')+'</span><div class=\"etf\">'+esc(r.etfNames||'-')+'</div></td>",
-        "<td><span class=\"pill '+(r.etfGood==='0개통과'?'fail':'pass')+'\">'+esc(r.etfGood||'-')+'</span><div class=\"etf\">'+etfLines(r.etfNames)+'</div></td>",
+        "<td><span class=\"pill '+(etfPassLabel(r)==='0개통과'?'fail':'pass')+'\">'+esc(etfPassLabel(r))+'</span><div class=\"etf\">'+etfPills(r.etfNames)+'</div></td>",
+    ).replace(
+        "<td><div class=\"theme\">'+esc(r.theme)+'</div></td>",
+        "<td><div class=\"theme\">'+themePills(r.theme)+'</div></td>",
     ).replace(
         "</main><script>",
         '<div class="header-tip" id="headerTip" role="tooltip" hidden></div></main><script>',
