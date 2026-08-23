@@ -63,7 +63,7 @@ CSV_FIELDS = [
     "volatility_contraction",
     "price_change_5d_pct",
     "ma120",
-    "avg_volume_50",
+    "avg_volume_55",
     "avg_volume_10",
     "volume_change_pct",
     "industry",
@@ -103,7 +103,7 @@ class Result:
     ma20: float
     ma20_gap: float
     ma120: float
-    avg_volume_50: float
+    avg_volume_55: float
     avg_volume_10: float
     volume_change_pct: float
     volatility_contraction: bool
@@ -778,15 +778,17 @@ def calculate_results(
         ma20 = sum(prices[day] for day in ma_days[-20:]) / 20
         ma120 = sum(prices[day] for day in ma_days) / 120
         ma20_gap = (prices[last_day] / ma20 - 1) * 100
-        volume_days = common_days[-50:]
-        avg_volume_50 = sum(volumes[day] for day in volume_days) / 50
+        # 최근 5거래일과 겹치지 않는 직전 55거래일을 비교한다.
+        # 두 구간을 합쳐 총 60거래일(분기 수준)의 거래량을 사용한다.
+        volume_days = common_days[-60:]
+        avg_volume_55 = sum(volumes[day] for day in volume_days[:-5]) / 55
         avg_volume_10 = sum(volumes[day] for day in volume_days[-10:]) / 10
-        volume_change = (avg_volume_10 / avg_volume_50 - 1) * 100 if avg_volume_50 else 0.0
+        volume_change = (avg_volume_10 / avg_volume_55 - 1) * 100 if avg_volume_55 else 0.0
         avg_volume_5 = sum(volumes[day] for day in volume_days[-5:]) / 5
         price_change_5d = (prices[last_day] / prices[common_days[-6]] - 1) * 100
         volatility_contraction = (
             abs(price_change_5d) <= 5
-            and avg_volume_50 >= avg_volume_5 * 2
+            and avg_volume_55 >= avg_volume_5 * 2
         )
         # 종가가 120일선 위에 있고, 20일선과의 괴리율이 설정 범위 안인 종목만 남긴다.
         meets_ma_condition = prices[last_day] > ma120 and abs(ma20_gap) <= ma20_gap_limit
@@ -811,7 +813,7 @@ def calculate_results(
                     ma20,
                     ma20_gap,
                     ma120,
-                    avg_volume_50,
+                    avg_volume_55,
                     avg_volume_10,
                     volume_change,
                     volatility_contraction,
@@ -850,7 +852,7 @@ def save_history(results: list[Result], run_date: str) -> int:
                 "volatility_contraction": "O" if item.volatility_contraction else "X",
                 "price_change_5d_pct": f"{item.price_change_5d:+.2f}",
                 "ma120": f"{item.ma120:.2f}",
-                "avg_volume_50": f"{item.avg_volume_50:.0f}",
+                "avg_volume_55": f"{item.avg_volume_55:.0f}",
                 "avg_volume_10": f"{item.avg_volume_10:.0f}",
                 "volume_change_pct": f"{item.volume_change_pct:+.2f}",
                 "industry": item.industry,
